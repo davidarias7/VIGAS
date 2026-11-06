@@ -1,5 +1,4 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 import numpy as np
 
 # Configuración de la página
@@ -29,7 +28,8 @@ longitud_viga = st.sidebar.number_input("Longitud total de la viga L (m):", min_
 st.sidebar.subheader("📌 Cargas Aplicadas")
 fuerza_p = st.sidebar.number_input("Fuerza Puntual P (kN):", min_value=0.0, max_value=500.0, value=20.0, step=1.0)
 angulo_p = st.sidebar.slider("Ángulo de P (grados respecto a la horizontal):", 0, 180, 90)
-posicion_p = st.sidebar.slider("Posición de la fuerza P (m desde A):", 0.0, float(longitud_viga), longitud_viga / 2)
+posicion_p = st.sidebar.slider("Posición de la fuerza P (m desde A):", 0.0, float(longitud_viga),
+                               float(longitud_viga / 2))
 
 carga_w = st.sidebar.number_input("Carga Distribuida w (kN/m):", min_value=0.0, max_value=100.0, value=5.0, step=0.5)
 
@@ -40,80 +40,56 @@ py = fuerza_p * np.sin(rad)
 
 # Cálculos de Reacciones
 if tipo_apoyo == "Simplemente Apoyada (Apoyo Fijo A + Apoyo Móvil B)":
-    # ΣFx = 0 -> Ax + Px = 0  => Ax = -Px
     ax = -px
-
-    # ΣMA = 0 -> (Py * pos_p) + (w * L * L/2) - (By * L) = 0
     by = ((py * posicion_p) + (carga_w * longitud_viga * (longitud_viga / 2))) / longitud_viga
-
-    # ΣFy = 0 -> Ay + By - Py - (w * L) = 0 => Ay = Py + (w * L) - By
     ay = py + (carga_w * longitud_viga) - by
     ma = 0.0
-
 else:  # Empotramiento en A
-    # ΣFx = 0 -> Ax + Px = 0  => Ax = -Px
     ax = -px
-
-    # ΣFy = 0 -> Ay - Py - (w * L) = 0 => Ay = Py + (w * L)
     ay = py + (carga_w * longitud_viga)
     by = 0.0
-
-    # ΣMA = 0 -> MA - (Py * pos_p) - (w * L * L/2) = 0 => MA = (Py * pos_p) + (w * L^2 / 2)
     ma = (py * posicion_p) + (carga_w * longitud_viga * (longitud_viga / 2))
 
-# Layout Principal: Gráfico a la izquierda, Resultados a la derecha
+# Layout Principal: Esquema visual y Resultados
 col_grafico, col_resultados = st.columns([1.2, 1])
 
 with col_grafico:
-    st.subheader("🎨 Diagrama de Cuerpo Libre (DCL)")
+    st.subheader("🎨 Diagrama de Cuerpo Libre (Esquema)")
 
-    fig, ax_plt = plt.subplots(figsize=(8, 4))
-
-    # Dibujar la viga
-    ax_plt.plot([0, longitud_viga], [0, 0], color="black", linewidth=8, label="Viga")
-
-    # Dibujar Apoyos en A y B
+    # Representación visual limpia y moderna con HTML/CSS (Sin errores de librerías)
     if tipo_apoyo == "Simplemente Apoyada (Apoyo Fijo A + Apoyo Móvil B)":
-        # Apoyo Fijo en A (Triángulo)
-        triangulo_a = plt.Polygon([[-0.2, -0.4], [0.2, -0.4], [0, 0]], color="red")
-        ax_plt.add_patch(triangulo_a)
-        ax_plt.text(0, -0.7, "A (Fijo)", horizontalalignment='center', fontweight='bold')
-
-        # Apoyo Móvil en B (Círculo)
-        circulo_b = plt.Circle((longitud_viga, -0.2), 0.2, color="blue")
-        ax_plt.add_patch(circulo_b)
-        ax_plt.text(longitud_viga, -0.7, "B (Móvil)", horizontalalignment='center', fontweight='bold')
+        esquema_html = f"""
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 12px; border: 2px dashed #cbd5e1; text-align: center; font-family: sans-serif;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;"><b>Longitud Total:</b> {longitud_viga} m</p>
+            <div style="font-size: 24px; margin: 15px 0; color: #0f172a; font-weight: bold; letter-spacing: 2px;">
+                🔺════════════════════════🔵
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0 10px; font-size: 14px; color: #334155;">
+                <span><b>Apoyo Fijo (A)</b><br><i>Ax, Ay</i></span>
+                <span style="color: #16a34a;"><b>Carga P:</b> {fuerza_p} kN ({angulo_p}°)</span>
+                <span><b>Apoyo Móvil (B)</b><br><i>By</i></span>
+            </div>
+            <p style="margin-top: 15px; color: #ea580c; font-size: 14px;"><b>Carga distribuida (w):</b> {carga_w} kN/m en toda la viga</p>
+        </div>
+        """
     else:
-        # Empotramiento en A (Línea tramada vertical)
-        ax_plt.plot([0, 0], [-0.8, 0.8], color="brown", linewidth=6)
-        for y_hatch in np.linspace(-0.8, 0.8, 9):
-            ax_plt.plot([-0.3, 0], [y_hatch - 0.1, y_hatch], color="brown", linewidth=2)
-        ax_plt.text(0, -1.1, "A (Empotramiento)", horizontalalignment='center', fontweight='bold')
-
-    # Dibujar Fuerza Puntual P
-    if fuerza_p > 0:
-        dx = -0.8 * np.cos(rad)
-        dy = -0.8 * np.sin(rad)
-        ax_plt.arrow(posicion_p - dx, -dy, dx, dy, head_width=0.15, head_length=0.15, fc='green', ec='green',
-                     linewidth=2)
-        ax_plt.text(posicion_p, 0.3, f'P = {fuerza_p} kN', color='green', fontweight='bold',
-                    horizontalalignment='center')
-
-    # Dibujar Carga Distribuida w
-    if carga_w > 0:
-        x_w = np.linspace(0, longitud_viga, 10)
-        for xw in x_w:
-            ax_plt.arrow(xw, 0.6, 0, -0.4, head_width=0.08, head_length=0.1, fc='orange', ec='orange')
-        ax_plt.plot([0, longitud_viga], [0.6, 0.6], color='orange', linestyle='--')
-        ax_plt.text(longitud_viga / 2, 0.75, f'w = {carga_w} kN/m', color='orange', fontweight='bold',
-                    horizontalalignment='center')
-
-    # Ajustes estéticos de la gráfica
-    ax_plt.set_xlim(-1, longitud_viga + 1)
-    ax_plt.set_ylim(-1.5, 1.5)
-    ax_plt.set_aspect('equal')
-    ax_plt.axis('off')
-    st.pyplot(fig)
+        esquema_html = f"""
+        <div style="background-color: #f8fafc; padding: 30px; border-radius: 12px; border: 2px dashed #cbd5e1; text-align: center; font-family: sans-serif;">
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 10px;"><b>Longitud Total:</b> {longitud_viga} m</p>
+            <div style="font-size: 24px; margin: 15px 0; color: #0f172a; font-weight: bold; letter-spacing: 2px;">
+                🧱══════════════════════════
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0 10px; font-size: 14px; color: #334155;">
+                <span><b>Empotramiento (A)</b><br><i>Ax, Ay, Ma</i></span>
+                <span style="color: #16a34a;"><b>Carga P:</b> {fuerza_p} kN ({angulo_p}°)</span>
+                <span><b>Extremo Libre</b></span>
+            </div>
+            <p style="margin-top: 15px; color: #ea580c; font-size: 14px;"><b>Carga distribuida (w):</b> {carga_w} kN/m en toda la viga</p>
+        </div>
+        """
+    st.markdown(esquema_html, unsafe_allow_html=True)
+    st.info(
+        "💡 Este esquema interactivo se actualiza de forma dinámica con los valores que configures en la barra lateral.")
 
 with col_resultados:
     st.subheader("📊 Resultados de las Reacciones")
